@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
 module Rx where
 
@@ -19,3 +19,7 @@ class Disposable a where
 {- Sample implementation -}
 
 data PushCollection a = PushCollection (IOArray Int a)
+
+instance Observable a (PushCollection a) where
+  subscribe coll subscriber = undefined
+
