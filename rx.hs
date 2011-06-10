@@ -8,7 +8,7 @@ import Data.Array.IO
 
 type SubscribeResult a = IO a
 
-class Observable a x where
+class Observable x a where
 	subscribe :: Disposable d => a -> Subscriber x -> SubscribeResult d
 
 type Subscriber x = (x -> IO ())
@@ -21,5 +21,5 @@ class Disposable a where
 data PushCollection a = PushCollection (IOArray Int a)
 
 instance Observable a (PushCollection a) where
-  subscribe coll subscriber = undefined
+  subscribe (PushCollection arr) subscriber = undefined
 
