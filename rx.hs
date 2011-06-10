@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, ScopedTypeVariables, FlexibleContexts, NoMonomorphismRestriction #-}
 
 module Rx where
 
@@ -9,23 +9,31 @@ import Data.IORef
 type SubscribeResult a = IO a
 
 class Observable x a where
-	subscribe :: Disposable d => a -> Subscriber x -> SubscribeResult d
+	subscribe :: a -> Subscriber x -> Disposable
 
 type Subscriber x = (x -> IO ())
 
-class Disposable a where
-	dispose :: a -> SubscribeResult ()
+type Disposable = SubscribeResult ()
 
 {- Sample implementation -}
 
 data PushCollection a = PushCollection (IORef [a])
 
-instance Observable a (PushCollection (Subscriber a)) where
+instance Observable a (PushCollection (a -> SubscribeResult a)) where
   subscribe (PushCollection listRef) subscriber = undefined
-{-
+
+stringObservable :: IO (PushCollection (String -> SubscribeResult String)) 
+stringObservable = do
+  ioRef <- newIORef []
+  return (PushCollection ioRef)
+
+stringSubscriber :: Subscriber String
+stringSubscriber x = putStrLn x
+
+main :: IO ()
 main = do
-  listRef <- newIORef []
-  let pushCollection = PushCollection listRef
-  let subscriber = (\ (x :: String) -> putStrLn x)
-  subscribe pushCollection subscriber
--}
+  pushCollection <- stringObservable 
+  let subscriber = stringSubscriber 
+  disposable <- subscribe pushCollection subscriber
+  putStrLn "done"
+
