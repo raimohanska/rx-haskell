@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, ScopedTypeVariables #-}
 
 module Rx where
 
@@ -20,7 +20,12 @@ class Disposable a where
 
 data PushCollection a = PushCollection (IORef [a])
 
-instance Observable a (PushCollection a) where
+instance Observable a (PushCollection (Subscriber a)) where
   subscribe (PushCollection listRef) subscriber = undefined
-
-
+{-
+main = do
+  listRef <- newIORef []
+  let pushCollection = PushCollection listRef
+  let subscriber = (\ (x :: String) -> putStrLn x)
+  subscribe pushCollection subscriber
+-}
