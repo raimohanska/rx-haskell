@@ -3,6 +3,7 @@
 module Rx where
 
 import Data.IORef
+import Control.Monad
 
 {- Generic interfaces -}
 
@@ -22,6 +23,8 @@ instance Observable a (PushCollection a) where
     observers <- readIORef listRef
     writeIORef listRef $ subscriber : observers 
 
+newPushCollection = liftM PushCollection (newIORef [])
+
 push :: PushCollection a -> a -> IO ()
 push (PushCollection listRef) item = do
     observers <- readIORef listRef
@@ -29,16 +32,11 @@ push (PushCollection listRef) item = do
 
 {- "Main" for testing it -}
 
-stringObservable :: IO (PushCollection (String)) 
-stringObservable = do
-  ioRef <- newIORef []
-  return (PushCollection ioRef)
 
 main :: IO ()
 main = do
-  pushCollection <- stringObservable 
-  let subscriber = putStrLn 
-  disposable <- subscribe pushCollection subscriber
+  pushCollection <- newPushCollection 
+  disposable <- subscribe pushCollection putStrLn
   push pushCollection "epic"
   putStrLn "done"
 
