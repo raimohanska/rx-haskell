@@ -6,18 +6,16 @@ import Data.IORef
 
 {- Generic interfaces -}
 
-type SubscribeResult a = IO a
-
 class Observable x a where
-	subscribe :: a -> Subscriber x -> Disposable
+	subscribe :: a -> Observer x -> Disposable
 
-type Subscriber x = (x -> IO ())
+type Observer x = (x -> IO ())
 
-type Disposable = SubscribeResult ()
+type Disposable = IO ()
 
 {- Sample implementation -}
 
-data PushCollection a = PushCollection (IORef [Subscriber a])
+data PushCollection a = PushCollection (IORef [Observer a])
 
 instance Observable a (PushCollection a) where
   subscribe (PushCollection listRef) subscriber = do
@@ -29,13 +27,13 @@ stringObservable = do
   ioRef <- newIORef []
   return (PushCollection ioRef)
 
-stringSubscriber :: Subscriber String
-stringSubscriber x = putStrLn x
+stringObserver :: Observer String
+stringObserver x = putStrLn x
 
 main :: IO ()
 main = do
   pushCollection <- stringObservable 
-  let subscriber = stringSubscriber 
+  let subscriber = stringObserver 
   disposable <- subscribe pushCollection subscriber
   putStrLn "done"
 
