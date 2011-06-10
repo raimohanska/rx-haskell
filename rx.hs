@@ -20,7 +20,9 @@ type Disposable = SubscribeResult ()
 data PushCollection a = PushCollection (IORef [Subscriber a])
 
 instance Observable a (PushCollection a) where
-  subscribe (PushCollection listRef) subscriber = undefined
+  subscribe (PushCollection listRef) subscriber = do
+    observers <- readIORef listRef
+    writeIORef listRef $ subscriber : observers 
 
 stringObservable :: IO (PushCollection (String)) 
 stringObservable = do
