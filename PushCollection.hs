@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 
-module PushCollection where
+module PushCollection(newPushCollection, push) where
 
 import Rx
 import Data.IORef
@@ -23,6 +23,7 @@ removeFromListRef ref subscriber = do
     (observers, id) <- readIORef ref
     writeIORef ref $ (filter (/= subscriber) observers, id)
   
+newPushCollection :: IO (PushCollection.PushCollection a)
 newPushCollection = liftM PushCollection (newIORef ([], 1))
 
 push :: PushCollection a -> a -> IO ()
