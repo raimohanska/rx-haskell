@@ -2,7 +2,7 @@
 
 module Rx where
 
-import Data.Array.IO
+import Data.IORef
 
 {- Generic interfaces -}
 
@@ -18,8 +18,9 @@ class Disposable a where
 
 {- Sample implementation -}
 
-data PushCollection a = PushCollection (IOArray Int a)
+data PushCollection a = PushCollection (IORef [a])
 
 instance Observable a (PushCollection a) where
-  subscribe (PushCollection arr) subscriber = undefined
+  subscribe (PushCollection listRef) subscriber = undefined
+
 
