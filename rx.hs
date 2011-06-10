@@ -34,13 +34,10 @@ stringObservable = do
   ioRef <- newIORef []
   return (PushCollection ioRef)
 
-stringObserver :: Observer String
-stringObserver x = putStrLn x
-
 main :: IO ()
 main = do
   pushCollection <- stringObservable 
-  let subscriber = stringObserver 
+  let subscriber = putStrLn 
   disposable <- subscribe pushCollection subscriber
   push pushCollection "epic"
   putStrLn "done"
