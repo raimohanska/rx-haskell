@@ -17,12 +17,12 @@ type Disposable = SubscribeResult ()
 
 {- Sample implementation -}
 
-data PushCollection a = PushCollection (IORef [a])
+data PushCollection a = PushCollection (IORef [Subscriber a])
 
-instance Observable a (PushCollection (a -> SubscribeResult a)) where
+instance Observable a (PushCollection a) where
   subscribe (PushCollection listRef) subscriber = undefined
 
-stringObservable :: IO (PushCollection (String -> SubscribeResult String)) 
+stringObservable :: IO (PushCollection (String)) 
 stringObservable = do
   ioRef <- newIORef []
   return (PushCollection ioRef)
