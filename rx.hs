@@ -28,10 +28,10 @@ newPushCollection = liftM PushCollection (newIORef [])
 push :: PushCollection a -> a -> IO ()
 push (PushCollection listRef) item = do
     observers <- readIORef listRef
-    mapM_ (\ observer -> observer item) observers
+    mapM_  (applyTo item) observers
+  where applyTo = flip ($)
 
 {- "Main" for testing it -}
-
 
 main :: IO ()
 main = do
