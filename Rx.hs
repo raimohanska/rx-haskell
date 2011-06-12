@@ -3,8 +3,8 @@ module Rx where
 
 import Control.Monad
 
-class Observable x a where
-	subscribe :: a -> Observer x -> IO Disposable
+class Observable x observable where
+	subscribe :: observable -> Subscribe x
 
 type Observer x = (x -> IO ())
 
