@@ -15,4 +15,5 @@ testPushCollection = do
 testObservableList = do
   let list = map show [1, 2, 3]
   dispose <- subscribe list putStrLn
+  dispose
   putStrLn "done"

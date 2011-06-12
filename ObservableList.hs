@@ -8,4 +8,4 @@ import Control.Monad
 instance Observable a ([a]) where
   subscribe list observer = do
     mapM observer list 
-    return (putStr "lol")
+    return (return ())
