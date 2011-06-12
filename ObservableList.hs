@@ -3,6 +3,9 @@
 module ObservableList where
 
 import Rx
+import Control.Monad
 
 instance Observable a ([a]) where
-  subscribe list observer = undefined 
+  subscribe list observer = do
+    mapM observer list 
+    return (putStr "lol")
