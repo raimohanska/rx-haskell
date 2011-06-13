@@ -3,19 +3,24 @@ module Rx where
 
 import Control.Monad
 
-class Observable x observable where
-	subscribe :: observable -> Subscribe x
+class Observable a observable where
+	subscribe :: observable -> Subscribe a
 
-type Observer x = (x -> IO ())
+type Observer a = (a -> IO ())
 
 type Disposable = IO ()
 
 type Subscribe a = (Observer a -> IO Disposable)
 
-instance Observable x (Subscribe x) where
+instance Observable a (Subscribe a) where
   subscribe func observer = func observer 
 
 instance Observable a ([a]) where
   subscribe list observer = do
     mapM observer list 
     return (return ())
+
+data Delegator a = ToObservable (Subscribe a)
+
+instance Observable a (Delegator a) where
+  subscribe (ToObservable sub) observer = sub observer
