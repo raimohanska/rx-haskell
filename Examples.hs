@@ -18,3 +18,7 @@ testObservableList = do
   putStrLn "done"
 
 testCombinators = subscribe (select show (Rx.filter even $ observableList [1, 2])) putStrLn
+
+testSelectMany = do
+  let fiveTimes = observableList . (replicate 5)
+  subscribe (selectMany (observableList ["a", "b"]) fiveTimes) putStrLn
