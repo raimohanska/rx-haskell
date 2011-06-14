@@ -35,6 +35,6 @@ filter predicate (Observable subscribe) = toObservable subscribe'
         filtered observer a = if (predicate a) then (observer a) else return ()
 
 selectMany :: Observable a -> (a -> Observable b) -> Observable b
-selectMany source spawner = toObservable ((subscribe source) . spawningObserver)
-  where spawningObserver observer a = subscribe (spawner a) observer >> return ()
+selectMany source spawner = toObservable ((subscribe source) . spawn)
+  where spawn observer a = subscribe (spawner a) observer >> return ()
                                           
