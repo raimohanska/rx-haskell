@@ -2,7 +2,13 @@ module Rx where
 
 import Control.Monad
 
+data Observable a = Observable {subscribe :: Subscribe a}
+
 type Observer a = (a -> IO ())
+
+type Subscribe a = (Observer a -> IO Disposable)
+
+type Disposable = IO ()
 
 instance Functor Observable where
   fmap = select
@@ -10,12 +16,6 @@ instance Functor Observable where
 instance Monad Observable where
   return a = observableList [a]
   (>>=) = selectMany
-  
-type Disposable = IO ()
-
-data Observable a = Observable {subscribe :: Subscribe a}
-
-type Subscribe a = (Observer a -> IO Disposable)
 
 toObservable :: Subscribe a -> Observable a
 toObservable subscribe = Observable subscribe
