@@ -1,7 +1,6 @@
 module Rx where
 
 import Control.Monad
-import Data.List(replicate)
 
 type Observer a = (a -> IO ())
 
@@ -9,7 +8,7 @@ instance Functor Observable where
   fmap = select
 
 instance Monad Observable where
-  return = observableList . (replicate 1)
+  return a = observableList [a]
   (>>=) = selectMany
   
 type Disposable = IO ()
