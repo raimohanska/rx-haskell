@@ -1,4 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses,FlexibleInstances,TypeSynonymInstances,IncoherentInstances #-}
 module Rx where
 
 import Control.Monad
@@ -7,11 +6,18 @@ type Observer a = (a -> IO ())
 
 type Disposable = IO ()
 
-type Subscribe a = (Observer a -> IO Disposable)
+type Observable a = (Observer a -> IO Disposable)
 
-observableList :: [a] -> Subscribe a
+observableList :: [a] -> Observable a
 observableList list observer = do
     mapM observer list 
     return (return ())
+
+select :: (a -> b) -> (Observable a) -> Observer b -> IO Disposable
+select convert subscribe observer = subscribe (observer . convert)
+
+filter :: (a -> Bool) -> (Observable a) -> Observer a -> IO Disposable
+filter predicate subscribe observer = subscribe filteredObserver
+  where filteredObserver a = if (predicate a) then (observer a) else return ()
 
 {- Try: select show (Combinators.filter even $ observableList [1, 2]) putStrLn -}
