@@ -13,10 +13,10 @@ observableList list observer = do
     mapM observer list 
     return (return ())
 
-select :: (a -> b) -> (Observable a) -> Observer b -> IO Disposable
+select :: (a -> b) -> Observable a -> Observable b
 select convert subscribe observer = subscribe (observer . convert)
 
-filter :: (a -> Bool) -> (Observable a) -> Observer a -> IO Disposable
+filter :: (a -> Bool) -> Observable a -> Observable a
 filter predicate subscribe observer = subscribe filteredObserver
   where filteredObserver a = if (predicate a) then (observer a) else return ()
 
