@@ -1,12 +1,17 @@
 module Rx where
 
 import Control.Monad
+import Data.List(replicate)
 
 type Observer a = (a -> IO ())
 
 instance Functor Observable where
   fmap = select
 
+instance Monad Observable where
+  return = observableList . (replicate 1)
+  (>>=) = selectMany
+  
 type Disposable = IO ()
 
 data Observable a = Observable {subscribe :: Subscribe a}
@@ -28,3 +33,6 @@ filter :: (a -> Bool) -> Observable a -> Observable a
 filter predicate (Observable subscribe) = toObservable subscribe'
   where subscribe' observer = subscribe (filtered observer)
         filtered observer a = if (predicate a) then (observer a) else return ()
+
+selectMany :: Observable a -> (a -> Observable b) -> Observable b
+selectMany = undefined
