@@ -4,18 +4,27 @@ import Control.Monad
 
 type Observer a = (a -> IO ())
 
+instance Functor Observable where
+  fmap = select
+
 type Disposable = IO ()
 
-type Observable a = (Observer a -> IO Disposable)
+data Observable a = Observable (Subscribe a)
+
+type Subscribe a = (Observer a -> IO Disposable)
+
+toObservable :: Subscribe a -> Observable a
+toObservable subscribe = Observable subscribe
 
 observableList :: [a] -> Observable a
-observableList list observer = do
-    mapM observer list 
-    return (return ())
+observableList list = toObservable subscribe 
+  where subscribe observer = mapM observer list >> return (return ())
 
 select :: (a -> b) -> Observable a -> Observable b
-select convert subscribe observer = subscribe (observer . convert)
+select convert (Observable subscribe) = toObservable subscribe'
+  where subscribe' observer = subscribe (observer . convert)
 
 filter :: (a -> Bool) -> Observable a -> Observable a
-filter predicate subscribe observer = subscribe filteredObserver
-  where filteredObserver a = if (predicate a) then (observer a) else return ()
+filter predicate (Observable subscribe) = toObservable subscribe'
+  where subscribe' observer = subscribe (filtered observer)
+        filtered observer a = if (predicate a) then (observer a) else return ()
