@@ -1,12 +1,11 @@
 import Rx
 import PushCollection
-import ObservableList
 
 testPushCollection :: IO ()
 testPushCollection = do
   pushCollection <- newPushCollection 
-  dispose <- subscribe pushCollection putStrLn
-  dispose2 <- subscribe pushCollection putStrLn
+  dispose <- observablePushCollection pushCollection putStrLn
+  dispose2 <- observablePushCollection pushCollection putStrLn
   push pushCollection "Should be printed twice"
   dispose
   push pushCollection "Should be printed once"
@@ -14,6 +13,6 @@ testPushCollection = do
 
 testObservableList = do
   let list = map show [1, 2, 3]
-  dispose <- subscribe list putStrLn
+  dispose <- observableList list putStrLn
   dispose
   putStrLn "done"
