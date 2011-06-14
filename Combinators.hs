@@ -3,11 +3,9 @@ module Combinators where
 
 import Rx
 
-select :: Observable a a' => (a -> b) -> a' -> Subscribe b 
-select func observable = (\ observerB -> subscribe observable (convert observerB))
-  where convert observerB = observerB . func
+select :: (a -> b) -> (Subscribe a) -> Observer b -> IO Disposable
+select convert subscribe observer = subscribe (observer . convert)
 
-filter :: Observable a a' => (a -> Bool) -> a' -> Subscribe a
-filter predicate observable = (\ observer -> subscribe observable (filterObserver observer))
-  where filterObserver observer a | predicate a = observer a
-                                  | otherwise = return ()
+filter :: (a -> Bool) -> (Subscribe a) -> Observer a -> IO Disposable
+filter predicate subscribe observer = subscribe filteredObserver
+  where filteredObserver a = if (predicate a) then (observer a) else return ()
