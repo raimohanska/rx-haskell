@@ -2,7 +2,7 @@
 
 module PushCollection(observablePushCollection, newPushCollection, push) where
 
-import Rx(Observable, Observer)
+import Rx(Observable, Observer, toObservable)
 import Data.IORef
 import Control.Monad
 
@@ -13,7 +13,9 @@ instance Eq (Subscription q) where
 data PushCollection a = PushCollection (IORef ([Subscription a], Int))
 
 observablePushCollection :: PushCollection a -> Observable a
-observablePushCollection (PushCollection ref) observer = do
+observablePushCollection collection = toObservable (subscribe collection)
+
+subscribe (PushCollection ref) observer = do
     (observers, id) <- readIORef ref
     let subscription = Subscription observer id
     writeIORef ref $ (subscription : observers, id+1) 

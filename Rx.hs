@@ -9,7 +9,7 @@ instance Functor Observable where
 
 type Disposable = IO ()
 
-data Observable a = Observable (Subscribe a)
+data Observable a = Observable {subscribe :: Subscribe a}
 
 type Subscribe a = (Observer a -> IO Disposable)
 

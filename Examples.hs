@@ -4,8 +4,8 @@ import PushCollection
 testPushCollection :: IO ()
 testPushCollection = do
   pushCollection <- newPushCollection 
-  dispose <- observablePushCollection pushCollection putStrLn
-  dispose2 <- observablePushCollection pushCollection putStrLn
+  dispose <- subscribe (observablePushCollection pushCollection) putStrLn
+  dispose2 <- subscribe (observablePushCollection pushCollection) putStrLn
   push pushCollection "Should be printed twice"
   dispose
   push pushCollection "Should be printed once"
@@ -13,8 +13,8 @@ testPushCollection = do
 
 testObservableList = do
   let list = map show [1, 2, 3]
-  dispose <- observableList list putStrLn
+  dispose <- subscribe (observableList list) putStrLn
   dispose
   putStrLn "done"
 
-testCombinators = select show (Rx.filter even $ observableList [1, 2]) putStrLn
+testCombinators = subscribe (select show (Rx.filter even $ observableList [1, 2])) putStrLn
