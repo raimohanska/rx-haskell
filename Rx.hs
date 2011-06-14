@@ -19,5 +19,3 @@ select convert subscribe observer = subscribe (observer . convert)
 filter :: (a -> Bool) -> Observable a -> Observable a
 filter predicate subscribe observer = subscribe filteredObserver
   where filteredObserver a = if (predicate a) then (observer a) else return ()
-
-{- Try: select show (Rx.filter even $ observableList [1, 2]) putStrLn -}

@@ -16,3 +16,5 @@ testObservableList = do
   dispose <- observableList list putStrLn
   dispose
   putStrLn "done"
+
+testCombinators = select show (Rx.filter even $ observableList [1, 2]) putStrLn
