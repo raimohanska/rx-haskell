@@ -26,3 +26,10 @@ testSelectMany = do
   putStrLn "Should print five a's and five b's"
   let fiveTimes = observableList . (replicate 5)
   subscribe (selectMany (observableList ["a", "b"]) fiveTimes) putStrLnObserver
+
+testConcat = do
+  putStrLn "Should print a, b, c"
+  subscribe (Rx.concat (observableList ["a", "b"]) (observableList ["c"])) putStrLnObserver
+
+alphabets = observableList ["a", "b", "c"]
+numbers = observableList ["1", "2", "3"]
