@@ -51,12 +51,11 @@ selectMany source spawner = toObservable ((subscribe source) . spawningObserver)
 concat :: Observable a -> Observable a -> Observable a
 concat a' b' = toObservable concat'
   where concat' observer = do disposeRef <- newIORef (return ())
-                              disposeFunc <- subscribe a' observer { end = switch disposeRef observer}
+                              disposeFunc <- subscribe a' observer { end = switchToB disposeRef observer}
+                              {- TODO: what if subscribe call leads to immediate call to end. now the following line will override dispose-b with dispose-a -}
                               writeIORef disposeRef disposeFunc
-                              return $ callRef disposeRef 
-        callRef ref = do val <- readIORef ref
-                         val
-        switch disposeRef observer = subscribe b' observer >>= (writeIORef disposeRef)
+                              return $ (join . readIORef) disposeRef 
+        switchToB disposeRef observer = subscribe b' observer >>= (writeIORef disposeRef)
  
 takeWhile :: (a -> Bool) -> Observable a -> Observable a
 takeWhile condition source = undefined
