@@ -4,7 +4,7 @@ import Control.Monad
 
 data Observable a = Observable {subscribe :: Subscribe a}
 
-type Observer a = (a -> IO ())
+data Observer a = Observer { next :: (a -> IO ()), end :: IO(), error :: String -> IO() }
 
 type Subscribe a = (Observer a -> IO Disposable)
 
@@ -20,20 +20,25 @@ instance Monad Observable where
 toObservable :: Subscribe a -> Observable a
 toObservable subscribe = Observable subscribe
 
+toObserver :: (a -> IO()) -> Observer a
+toObserver next = Observer next (return ()) fail
+
 observableList :: [a] -> Observable a
 observableList list = toObservable subscribe 
-  where subscribe observer = mapM observer list >> return (return ())
+  where subscribe observer = mapM (next observer) list >> end observer >> return (return ())
 
 select :: (a -> b) -> Observable a -> Observable b
 select convert (Observable subscribe) = toObservable subscribe'
-  where subscribe' observer = subscribe (observer . convert)
+  where subscribe' observer = subscribe observer { next = (next observer . convert)}
 
 filter :: (a -> Bool) -> Observable a -> Observable a
 filter predicate (Observable subscribe) = toObservable subscribe'
-  where subscribe' observer = subscribe (filtered observer)
-        filtered observer a = if (predicate a) then (observer a) else return ()
+  where subscribe' observer = subscribe observer { next = (filtered $ next observer) }
+        filtered nextFunc a = if (predicate a) then (nextFunc a) else return ()
 
 selectMany :: Observable a -> (a -> Observable b) -> Observable b
-selectMany source spawner = toObservable ((subscribe source) . spawn)
-  where spawn observer a = subscribe (spawner a) observer >> return ()
+selectMany source spawner = toObservable ((subscribe source) . spawningObserver)
+  where spawningObserver observer = observer { next = spawnSingle observer }
+        spawnSingle observer a = subscribe (spawner a) observer { end = return() } >> return ()
+        
                                           
