@@ -13,9 +13,9 @@ testPushCollection = do
   push pushCollection "Should be printed once"
 
 testObservableList = do
-  putStrLn "Should print 1, 2, 3"
+  putStrLn "Should print 1, 2, 3, end"
   let list = map show [1, 2, 3]
-  dispose <- subscribe (observableList list) putStrLnObserver
+  dispose <- subscribe (observableList list) (Observer putStrLn (putStrLn "end") fail)
   dispose
 
 testCombinators = do
