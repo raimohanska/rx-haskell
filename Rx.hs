@@ -47,7 +47,7 @@ selectMany :: Observable a -> (a -> Observable b) -> Observable b
 selectMany source spawner = toObservable ((subscribe source) . spawningObserver)
   where spawningObserver observer = observer { next = spawnSingle observer }
         spawnSingle observer a = subscribe (spawner a) observer { end = return() } >> return ()
-       
+        {- TODO: dispose will never be called on the spawned Observables -}
 concat :: Observable a -> Observable a -> Observable a
 concat a' b' = toObservable concat'
   where concat' observer = do disposeRef <- newIORef (return ())
