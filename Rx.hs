@@ -20,7 +20,7 @@ instance Monad Observable where
 
 instance MonadPlus Observable where
   mzero = observableList []
-  mplus = Rx.concat
+  mplus = merge 
 
 toObservable :: Subscribe a -> Observable a
 toObservable subscribe = Observable subscribe
@@ -57,5 +57,12 @@ concat a' b' = toObservable concat'
                               return $ (join . readIORef) disposeRef 
         switchToB disposeRef observer = subscribe b' observer >>= (writeIORef disposeRef)
  
+merge :: Observable a -> Observable a -> Observable a
+merge left right = toObservable merge'
+  where merge' observer = do disposeLeft <- subscribe left observer
+                             disposeRight <- subscribe right observer
+                             return (disposeLeft >> disposeRight)
+                              {- TODO: should probably "end" only when both streams have ended -}
+
 takeWhile :: (a -> Bool) -> Observable a -> Observable a
 takeWhile condition source = undefined
