@@ -69,4 +69,16 @@ merge left right = toObservable merge'
                                            when otherDone done
 
 takeWhile :: (a -> Bool) -> Observable a -> Observable a
-takeWhile condition source = undefined
+takeWhile condition source = toObservable takeWhile'
+  where takeWhile' observer = undefined
+
+skipWhile condition source = skipUntil (\a -> not $ condition a) source
+
+skipUntil :: (a -> Bool) -> Observable a -> Observable a
+skipUntil condition source = toObservable skipUntil'
+  where skipUntil' observer = do doneRef <- newIORef False
+                                 subscribe source observer { next = forward doneRef (next observer) }
+        forward doneRef next a = do done <- readIORef doneRef
+                                    if (done || condition a) 
+                                       then when (not done) (writeIORef doneRef True) >> next a
+                                       else return()
