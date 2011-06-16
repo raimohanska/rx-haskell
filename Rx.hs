@@ -70,9 +70,16 @@ merge left right = toObservable merge'
 
 takeWhile :: (a -> Bool) -> Observable a -> Observable a
 takeWhile condition source = toObservable takeWhile'
-  where takeWhile' observer = undefined
-
-skipWhile condition source = skipUntil (\a -> not $ condition a) source
+  where takeWhile' observer = do disposeRef <- newIORef (return ())
+                                 disposeFunc <- subscribe source observer { next = forward disposeRef (next observer) }
+                                 {- TODO: what if subscribe call leads to immediate call to end. now the following line will override dispose-b with dispose-a -}
+                                 writeIORef disposeRef disposeFunc
+                                 return disposeFunc
+        forward disposeRef next a = if (condition a)
+                            then next a
+                            else do disposeFunc <- readIORef disposeRef
+                                    disposeFunc
+ 
 
 skipUntil :: (a -> Bool) -> Observable a -> Observable a
 skipUntil condition source = toObservable skipUntil'
@@ -82,3 +89,6 @@ skipUntil condition source = toObservable skipUntil'
                                     if (done || condition a) 
                                        then when (not done) (writeIORef doneRef True) >> next a
                                        else return()
+
+skipWhile condition source = skipUntil (\a -> not $ condition a) source
+takeUntil condition source = Rx.takeWhile (\a -> not $ condition a) source
