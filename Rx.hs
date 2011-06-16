@@ -59,10 +59,14 @@ concat a' b' = toObservable concat'
  
 merge :: Observable a -> Observable a -> Observable a
 merge left right = toObservable merge'
-  where merge' observer = do disposeLeft <- subscribe left observer
-                             disposeRight <- subscribe right observer
+  where merge' observer = do endLeft <- newIORef (False)
+                             endRight <- newIORef (False)
+                             disposeLeft <- subscribe left observer { end = barrier endLeft endRight (end observer)}
+                             disposeRight <- subscribe right observer { end = barrier endRight endLeft (end observer)}
                              return (disposeLeft >> disposeRight)
-                              {- TODO: should probably "end" only when both streams have ended -}
+        barrier myFlag otherFlag done = do writeIORef myFlag True
+                                           otherDone <- readIORef otherFlag
+                                           when otherDone done
 
 takeWhile :: (a -> Bool) -> Observable a -> Observable a
 takeWhile condition source = undefined

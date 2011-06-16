@@ -1,7 +1,7 @@
 import Rx
 import PushCollection
 
-putStrLnObserver = toObserver putStrLn
+putStrLnObserver = Observer putStrLn (putStrLn "end") fail
 
 testPushCollection :: IO ()
 testPushCollection = do
@@ -15,7 +15,7 @@ testPushCollection = do
 testObservableList = do
   putStrLn "Should print 1, 2, 3, end"
   let list = map show [1, 2, 3]
-  dispose <- subscribe (observableList list) (Observer putStrLn (putStrLn "end") fail)
+  dispose <- subscribe (observableList list) putStrLnObserver 
   dispose
 
 testCombinators = do
@@ -30,6 +30,10 @@ testSelectMany = do
 testConcat = do
   putStrLn "Should print a, b, c"
   subscribe (Rx.concat (observableList ["a", "b"]) (observableList ["c"])) putStrLnObserver
+
+testMerge = do
+  putStrLn "Should print a, b, c, 1, 2, 3"
+  subscribe (merge alphabets numbers) putStrLnObserver 
 
 alphabets = observableList ["a", "b", "c"]
 numbers = observableList ["1", "2", "3"]
