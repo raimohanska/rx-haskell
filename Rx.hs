@@ -7,7 +7,9 @@ import Data.IORef
 
 data Observable a = Observable {subscribe :: Subscribe a}
 
-data Observer a = Observer { next :: (a -> IO ()), end :: IO(), error :: String -> IO() }
+data Observer a = Observer { consume :: (Event a -> IO ()) }
+
+data Event a = Next a | End | Error String
 
 type Subscribe a = (Observer a -> IO Disposable)
 
@@ -31,12 +33,15 @@ toObservable :: Subscribe a -> Observable a
 toObservable subscribe = Observable subscribe
 
 toObserver :: (a -> IO()) -> Observer a
-toObserver next = Observer next (return ()) fail
+toObserver next = Observer defaultHandler
+  where defaultHandler (Next a) = next a
+        defaultHandler End = return ()
+        defaultHandler (Error e) = fail e
 
 observableList :: [a] -> Observable a
 observableList list = toObservable subscribe 
-  where subscribe observer = do mapM (next observer) list
-                                end observer
+  where subscribe observer = do mapM (consume observer) (map Next list)
+                                consume observer $ End
                                 return (return ())
 
 select :: (a -> b) -> Observable a -> Observable b
@@ -50,33 +55,46 @@ filter predicate source = do
 
 selectMany :: Observable a -> (a -> Observable b) -> Observable b
 selectMany source spawner = toObservable ((subscribe source) . spawningObserver)
-  where spawningObserver observer = observer { next = spawnSingle observer }
-        spawnSingle observer a = subscribe (spawner a) observer { end = return() } >> return ()
+  where spawningObserver observer = Observer (spawnSingle observer)
+        spawnSingle observer = onNext observer $ spawnForElement observer 
+        spawnForElement observer a = subscribe (spawner a) (ignoreEnd observer) >> return ()
+        ignoreEnd observer = onEnd observer $ return ()
+        -- TODO: error handling 
         {- TODO: dispose will never be called on the spawned Observables -}
 concat :: Observable a -> Observable a -> Observable a
 concat a' b' = toObservable concat'
   where concat' observer = do disposeRef <- newIORef (return ())
-                              disposeFunc <- subscribe a' observer { end = switchToB disposeRef observer}
+                              disposeFunc <- subscribe a' onEnd observer $ switchToB disposeRef observer
                               {- TODO: what if subscribe call leads to immediate call to end. now the following line will override dispose-b with dispose-a -}
                               writeIORef disposeRef disposeFunc
                               return $ (join . readIORef) disposeRef 
         switchToB disposeRef observer = subscribe b' observer >>= (writeIORef disposeRef)
+
+onEnd :: Observer a -> IO() -> Observer a
+onEnd observer action = Observer onEnd'
+  where onEnd' End = action
+        onEnd' event = consume observer event
+
+onNext :: Observer a -> (a -> IO()) -> Observer a
+onNext observer action = Observer onNext'
+  where onNext' (Next a) = action a
+        onNext' event = consume observer event
  
 merge :: Observable a -> Observable a -> Observable a
 merge left right = toObservable merge'
   where merge' observer = do endLeft <- newIORef (False)
                              endRight <- newIORef (False)
-                             disposeLeft <- subscribe left observer { end = barrier endLeft endRight (end observer)}
-                             disposeRight <- subscribe right observer { end = barrier endRight endLeft (end observer)}
+                             disposeLeft <- subscribe left onEnd observer $ barrier endLeft endRight observer
+                             disposeRight <- subscribe right onEnd observer $ barrier endRight endLeft observer
                              return (disposeLeft >> disposeRight)
-        barrier myFlag otherFlag done = do writeIORef myFlag True
-                                           otherDone <- readIORef otherFlag
-                                           when otherDone done
+        barrier myFlag otherFlag observer = do writeIORef myFlag True
+                                               otherDone <- readIORef otherFlag
+                                               when otherDone $ consume observer End
 
 takeWhile :: (a -> Bool) -> Observable a -> Observable a
 takeWhile condition source = toObservable takeWhile'
   where takeWhile' observer = do disposeRef <- newIORef (return ())
-                                 disposeFunc <- subscribe source observer { next = forward disposeRef (next observer) }
+                                 disposeFunc <- subscribe source onNext observer $ forward disposeRef (consume observer . Next)
                                  {- TODO: what if subscribe call leads to immediate call to end. now the following line will override dispose-b with dispose-a -}
                                  writeIORef disposeRef disposeFunc
                                  return disposeFunc
@@ -89,7 +107,7 @@ takeWhile condition source = toObservable takeWhile'
 skipWhile :: (a -> Bool) -> Observable a -> Observable a
 skipWhile condition source = toObservable skipWhile'
   where skipWhile' observer = do doneRef <- newIORef False
-                                 subscribe source observer { next = forward doneRef (next observer) }
+                                 subscribe source onNext observer $ forward doneRef (consume observer . Next)
         forward doneRef next a = do done <- readIORef doneRef
                                     if (done || not (condition a)) 
                                        then when (not done) (writeIORef doneRef True) >> next a
@@ -97,6 +115,7 @@ skipWhile condition source = toObservable skipWhile'
 
 stateFul :: (TVar Bool -> a -> STM Bool) -> Observable a -> Observable a
 stateFul processor source = toObservable stateful'
+  where stateful' = undefined
 -- TODO: implement statetul, then skipWhile using stateful, finally refactor takeWhile
 
 data Valve a = Valve (TVar Bool) (Observable a) 
@@ -121,9 +140,8 @@ valved :: TVar Bool -> Observable a -> Observable a
 valved state observable = getObservable $ Valve state observable
 
 valvedObserver :: TVar Bool -> Observer a -> Observer a
-valvedObserver state (Observer next end error) = Observer (valved1 next) (valved end) (valved1 error)
-  where valved action = atomically (readTVar state) >>= \open -> when open action
-        valved1 action input = atomically (readTVar state) >>= \open -> when open (action input)
+valvedObserver state (Observer consume) = Observer (valved consume)
+  where valved action input = atomically (readTVar state) >>= \open -> when open (action input)
 
 {- TODO: *Until types should be Observable a -> Observable a -> Observable a -}
 {- TODO: Use Control.Concurrent.STM -}
