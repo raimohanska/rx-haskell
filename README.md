@@ -2,7 +2,12 @@ Rx for Haskell
 ==============
 
 Attempt to implement the Reactive Extensions API in Haskell. Just for
-the sake of it.
+the sake of it. Like this:
+
+~~~ {.haskell}
+*Rx> subscribe (select show (Rx.filter even $ observableList [1, 2])) putStrLn
+2
+~~~
 
 Status
 ------
