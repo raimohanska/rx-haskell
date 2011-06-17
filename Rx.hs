@@ -95,6 +95,10 @@ skipWhile condition source = toObservable skipWhile'
                                        then when (not done) (writeIORef doneRef True) >> next a
                                        else return()
 
+stateFul :: (TVar Bool -> a -> STM Bool) -> Observable a -> Observable a
+stateFul processor source = toObservable stateful'
+-- TODO: implement statetul, then skipWhile using stateful, finally refactor takeWhile
+
 data Valve a = Valve (TVar Bool) (Observable a) 
 
 valve :: Observable a -> Bool -> STM (Valve a)
