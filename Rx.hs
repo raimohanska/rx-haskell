@@ -92,3 +92,5 @@ skipUntil condition source = toObservable skipUntil'
 
 skipWhile condition source = skipUntil (\a -> not $ condition a) source
 takeUntil condition source = Rx.takeWhile (\a -> not $ condition a) source
+
+{- TODO: *Until types should be Observable a -> Observable a -> Observable a -}
