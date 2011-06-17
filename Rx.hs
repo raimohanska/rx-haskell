@@ -114,7 +114,7 @@ skipWhile condition source = toObservable skipWhile'
                                        then when (not done) (writeIORef doneRef True) >> next a
                                        else return()
 
-stateFul :: (TVar Bool -> a -> STM Bool) -> Observable a -> Observable a
+stateFul :: (TVar Bool -> Event a -> STM Bool) -> Observable a -> Observable a
 stateFul processor source = toObservable stateful'
   where stateful' = undefined
 -- TODO: implement statetul, then skipWhile using stateful, finally refactor takeWhile
