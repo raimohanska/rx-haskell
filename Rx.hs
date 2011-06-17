@@ -95,10 +95,10 @@ skipWhile condition source = toObservable skipWhile'
                                        then when (not done) (writeIORef doneRef True) >> next a
                                        else return()
 
-data Valve a = Valve (Observable a) (TVar Bool)
+data Valve a = Valve (TVar Bool) (Observable a) 
 
 valve :: Observable a -> Bool -> STM (Valve a)
-valve observable open = newTVar open >>= return . Valve observable
+valve observable open = newTVar open >>= return . (flip Valve) observable
 
 openValve :: Valve a -> STM ()
 openValve = setValveState True 
@@ -107,14 +107,14 @@ closeValve :: Valve a -> STM()
 closeValve = setValveState False
 
 setValveState :: Bool -> Valve a -> STM ()
-setValveState newState (Valve _ state) = writeTVar state newState
+setValveState newState (Valve state _) = writeTVar state newState
 
 instance Source Valve where
-  getObservable (Valve (Observable subscribe) state) = toObservable subscribe'
+  getObservable (Valve state (Observable subscribe)) = toObservable subscribe'
     where subscribe' = subscribe . valvedObserver state
 
 valved :: TVar Bool -> Observable a -> Observable a
-valved state observable = getObservable $ Valve observable state
+valved state observable = getObservable $ Valve state observable
 
 valvedObserver :: TVar Bool -> Observer a -> Observer a
 valvedObserver state (Observer next end error) = Observer (valved1 next) (valved end) (valved1 error)
