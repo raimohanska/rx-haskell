@@ -1,6 +1,8 @@
 module Rx where
 
 import Control.Monad
+import Control.Concurrent.STM
+import Control.Concurrent.STM.TVar
 import Data.IORef
 
 data Observable a = Observable {subscribe :: Subscribe a}
@@ -10,6 +12,9 @@ data Observer a = Observer { next :: (a -> IO ()), end :: IO(), error :: String 
 type Subscribe a = (Observer a -> IO Disposable)
 
 type Disposable = IO ()
+
+class Source s where
+  getObservable :: s a -> Observable a
 
 instance Functor Observable where
   fmap = select
@@ -81,16 +86,40 @@ takeWhile condition source = toObservable takeWhile'
                                     disposeFunc
  
 
-skipUntil :: (a -> Bool) -> Observable a -> Observable a
-skipUntil condition source = toObservable skipUntil'
-  where skipUntil' observer = do doneRef <- newIORef False
+skipWhile :: (a -> Bool) -> Observable a -> Observable a
+skipWhile condition source = toObservable skipWhile'
+  where skipWhile' observer = do doneRef <- newIORef False
                                  subscribe source observer { next = forward doneRef (next observer) }
         forward doneRef next a = do done <- readIORef doneRef
-                                    if (done || condition a) 
+                                    if (done || not (condition a)) 
                                        then when (not done) (writeIORef doneRef True) >> next a
                                        else return()
 
-skipWhile condition source = skipUntil (\a -> not $ condition a) source
-takeUntil condition source = Rx.takeWhile (\a -> not $ condition a) source
+data Valve a = Valve (Observable a) (TVar Bool)
+
+valve :: Observable a -> Bool -> STM (Valve a)
+valve observable open = newTVar open >>= return . Valve observable
+
+openValve :: Valve a -> STM ()
+openValve = setValveState True 
+
+closeValve :: Valve a -> STM()
+closeValve = setValveState False
+
+setValveState :: Bool -> Valve a -> STM ()
+setValveState newState (Valve _ state) = writeTVar state newState
+
+instance Source Valve where
+  getObservable (Valve (Observable subscribe) state) = toObservable subscribe'
+    where subscribe' = subscribe . valvedObserver state
+
+valved :: TVar Bool -> Observable a -> Observable a
+valved state observable = getObservable $ Valve observable state
+
+valvedObserver :: TVar Bool -> Observer a -> Observer a
+valvedObserver state (Observer next end error) = Observer (valved1 next) (valved end) (valved1 error)
+  where valved action = atomically (readTVar state) >>= \open -> when open action
+        valved1 action input = atomically (readTVar state) >>= \open -> when open (action input)
 
 {- TODO: *Until types should be Observable a -> Observable a -> Observable a -}
+{- TODO: Use Control.Concurrent.STM -}
