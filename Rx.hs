@@ -5,9 +5,11 @@ import Control.Concurrent.STM
 import Control.Concurrent.STM.TVar
 import Data.IORef
 
-data Observable a = Observable {subscribe :: Subscribe a}
+data Observable a = Observable { subscribe :: Subscribe a }
 
-data Observer a = Observer { consume :: (Event a -> IO ()) }
+data Observer a = Observer { consume :: EventHandler a }
+
+type EventHandler a = (Event a -> IO ())
 
 data Event a = Next a | End | Error String
 
