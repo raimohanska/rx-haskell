@@ -1,7 +1,7 @@
 import Rx
 import PushCollection
 
-putStrLnObserver = Observer putStrLn (putStrLn "end") fail
+putStrLnObserver = onEnd (toObserver putStrLn) (putStrLn "end") 
 
 testPushCollection :: IO ()
 testPushCollection = do

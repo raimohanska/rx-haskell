@@ -2,7 +2,7 @@
 
 module PushCollection(observablePushCollection, newPushCollection, push) where
 
-import Rx(Observable, Observer, toObservable, next)
+import Rx(Observable, Observer, toObservable, consume, Event(..))
 import Data.IORef
 import Control.Monad
 
@@ -32,4 +32,4 @@ push :: PushCollection a -> a -> IO ()
 push (PushCollection listRef) item = do
     (observers, _) <- readIORef listRef
     mapM_  (applyTo item) observers
-  where applyTo item (Subscription observer _) = next observer $ item
+  where applyTo item (Subscription observer _) = consume observer . Next $ item
