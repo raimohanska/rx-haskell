@@ -55,16 +55,15 @@ filter predicate source = do
 
 selectMany :: Observable a -> (a -> Observable b) -> Observable b
 selectMany source spawner = toObservable ((subscribe source) . spawningObserver)
-  where spawningObserver observer = Observer (spawnSingle observer)
-        spawnSingle observer = onNext observer $ spawnForElement observer 
-        spawnForElement observer a = subscribe (spawner a) (ignoreEnd observer) >> return ()
+  where spawningObserver observer = toObserver $ spawnSingle observer 
+        spawnSingle observer a = subscribe (spawner a) (ignoreEnd observer) >> return ()
         ignoreEnd observer = onEnd observer $ return ()
         -- TODO: error handling 
         {- TODO: dispose will never be called on the spawned Observables -}
 concat :: Observable a -> Observable a -> Observable a
 concat a' b' = toObservable concat'
   where concat' observer = do disposeRef <- newIORef (return ())
-                              disposeFunc <- subscribe a' onEnd observer $ switchToB disposeRef observer
+                              disposeFunc <- subscribe a' $ onEnd observer $ switchToB disposeRef observer
                               {- TODO: what if subscribe call leads to immediate call to end. now the following line will override dispose-b with dispose-a -}
                               writeIORef disposeRef disposeFunc
                               return $ (join . readIORef) disposeRef 
@@ -84,8 +83,8 @@ merge :: Observable a -> Observable a -> Observable a
 merge left right = toObservable merge'
   where merge' observer = do endLeft <- newIORef (False)
                              endRight <- newIORef (False)
-                             disposeLeft <- subscribe left onEnd observer $ barrier endLeft endRight observer
-                             disposeRight <- subscribe right onEnd observer $ barrier endRight endLeft observer
+                             disposeLeft <- subscribe left $ onEnd observer $ barrier endLeft endRight observer
+                             disposeRight <- subscribe right $ onEnd observer $ barrier endRight endLeft observer
                              return (disposeLeft >> disposeRight)
         barrier myFlag otherFlag observer = do writeIORef myFlag True
                                                otherDone <- readIORef otherFlag
@@ -94,7 +93,7 @@ merge left right = toObservable merge'
 takeWhile :: (a -> Bool) -> Observable a -> Observable a
 takeWhile condition source = toObservable takeWhile'
   where takeWhile' observer = do disposeRef <- newIORef (return ())
-                                 disposeFunc <- subscribe source onNext observer $ forward disposeRef (consume observer . Next)
+                                 disposeFunc <- subscribe source $ onNext observer $ forward disposeRef (consume observer . Next)
                                  {- TODO: what if subscribe call leads to immediate call to end. now the following line will override dispose-b with dispose-a -}
                                  writeIORef disposeRef disposeFunc
                                  return disposeFunc
@@ -107,7 +106,7 @@ takeWhile condition source = toObservable takeWhile'
 skipWhile :: (a -> Bool) -> Observable a -> Observable a
 skipWhile condition source = toObservable skipWhile'
   where skipWhile' observer = do doneRef <- newIORef False
-                                 subscribe source onNext observer $ forward doneRef (consume observer . Next)
+                                 subscribe source $ onNext observer $ forward doneRef (consume observer . Next)
         forward doneRef next a = do done <- readIORef doneRef
                                     if (done || not (condition a)) 
                                        then when (not done) (writeIORef doneRef True) >> next a
