@@ -8,6 +8,6 @@ Status
 ------
 
 - Observable, Observer and Disposable defined, working in the IO Monad
-- "PushCollection" is a simple implementation of Observable
-- In "read rx", the Observer has three methods (OnNext, OnEnd, OnError). My version has just one (OnNext)
-- No combinators yet
+- "PushCollection" is a simple implementation of Observable. Push it!
+- Observer has now next/end/error functions
+- Some combinators implemented. Most of them badly.
