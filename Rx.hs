@@ -110,13 +110,19 @@ skipWhile condition source = stateful skipWhile' False source
                                                 then writeTVar state True >> (return $ Pass event)
                                                 else return Skip
         skipWhile' state event = return $ Pass event
-{-
 takeUntil :: Observable a -> Observable b -> Observable a
 takeUntil source stopper = toObservable subscribe'
-  where subscribe' observer = do state <- newTVarIO False
+  where subscribe' observer = do state <- newTVarIO True
                                  disposeSource <- subscribe (valved state source) observer
-                                 disposeStopper <- subscribe 
--}
+                                 disposeStopper <- subscribeStatefully stopProcessor state stopper observer
+                                 return (disposeSource >> disposeStopper)
+        stopProcessor state (Next _) = do open <- readTVar state
+                                          if (not open) 
+                                             then return Skip 
+                                             else writeTVar state False >> return Unsubscribe
+        stopProcessor state _ = return Skip
+                                          
+ 
 data Result a = Pass (Event a) | Skip | Unsubscribe
 
 stateful :: (TVar s -> Event a -> STM (Result a)) -> s -> Observable a -> Observable a
@@ -124,7 +130,7 @@ stateful processor initState source = toObservable subscribe'
   where subscribe' observer = do state <- newTVarIO initState
                                  subscribeStatefully processor state source observer
 
-subscribeStatefully :: (TVar s -> Event a -> STM (Result a)) -> TVar s -> Observable a -> Observer a -> IO Disposable
+subscribeStatefully :: (TVar s -> Event a -> STM (Result b)) -> TVar s -> Observable a -> Observer b -> IO Disposable
 subscribeStatefully processor state source observer = subscribe source $ Observer $ statefully observer state
   where statefully observer state event = do result <- atomically (processor state event)
                                              case result of
