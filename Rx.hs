@@ -93,17 +93,15 @@ merge left right = toObservable merge'
                                                when otherDone $ consume observer End
 
 takeWhile :: (a -> Bool) -> Observable a -> Observable a
-takeWhile condition source = toObservable takeWhile'
-  where takeWhile' observer = do disposeRef <- newIORef (return ())
-                                 disposeFunc <- subscribe source $ onNext observer $ forward disposeRef (consume observer . Next)
-                                 {- TODO: what if subscribe call leads to immediate call to end. now the following line will override dispose-b with dispose-a -}
-                                 writeIORef disposeRef disposeFunc
-                                 return disposeFunc
-        forward disposeRef next a = if (condition a)
-                            then next a
-                            else do disposeFunc <- readIORef disposeRef
-                                    disposeFunc
- 
+takeWhile condition source = stateful takeWhile' False source
+  where takeWhile' state event@(Next a) = do done <- readTVar state
+                                             if done 
+                                                then return Skip
+                                                else if condition a
+                                                    then return (Pass event)
+                                                    else writeTVar state True >> return Unsubscribe
+        takeWhile' state event = do done <- readTVar state
+                                    if (done) then (return Skip) else (return $ Pass event)
 
 skipWhile :: (a -> Bool) -> Observable a -> Observable a
 skipWhile condition source = stateful skipWhile' False source
@@ -123,7 +121,7 @@ stateful processor initState source = toObservable subscribe'
                                              case result of
                                                 Pass e -> consume observer e
                                                 Skip -> return()
-                                                Unsubscribe -> return()
+                                                Unsubscribe -> consume observer End 
 -- TODO: implement the Unsubscribe case above 
 
 data Valve a = Valve (TVar Bool) (Observable a) 
