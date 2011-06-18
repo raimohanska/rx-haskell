@@ -106,18 +106,18 @@ takeWhile condition source = toObservable takeWhile'
  
 
 skipWhile :: (a -> Bool) -> Observable a -> Observable a
-skipWhile condition source = toObservable skipWhile'
-  where skipWhile' observer = do doneRef <- newIORef False
-                                 subscribe source $ onNext observer $ forward doneRef (consume observer . Next)
-        forward doneRef next a = do done <- readIORef doneRef
-                                    if (done || not (condition a)) 
-                                       then when (not done) (writeIORef doneRef True) >> next a
-                                       else return()
+skipWhile condition source = stateful skipWhile' False source
+  where skipWhile' state event@(Next a) = do done <- readTVar state
+                                             if (done || not (condition a))
+                                                then writeTVar state True >> (return $ Pass event)
+                                                else return Skip
+        skipWhile' state event = return $ Pass event
+                                                                                    
 
 data Result a = Pass (Event a) | Skip | Unsubscribe
 
-stateFul :: (TVar s -> Event a -> STM (Result a)) -> s -> Observable a -> Observable a
-stateFul processor initState source = toObservable subscribe'
+stateful :: (TVar s -> Event a -> STM (Result a)) -> s -> Observable a -> Observable a
+stateful processor initState source = toObservable subscribe'
   where subscribe' observer = do state <- newTVarIO initState
                                  subscribe source $ Observer $ statefully observer state
         statefully observer state event = do result <- atomically (processor state event)
