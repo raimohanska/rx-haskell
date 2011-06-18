@@ -112,7 +112,6 @@ skipWhile condition source = stateful skipWhile' False source
                                                 then writeTVar state True >> (return $ Pass event)
                                                 else return Skip
         skipWhile' state event = return $ Pass event
-                                                                                    
 
 data Result a = Pass (Event a) | Skip | Unsubscribe
 
