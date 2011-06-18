@@ -114,13 +114,13 @@ takeUntil :: Observable a -> Observable b -> Observable a
 takeUntil source stopper = toObservable subscribe'
   where subscribe' observer = do state <- newTVarIO True -- TODO: should unsub source on stop event
                                  disposeSource <- subscribe (valved state source) observer
-                                 disposeStopper <- subscribeStatefully stopProcessor state stopper observer
+                                 disposeStopper <- subscribeStatefully stopOnNext state stopper observer
                                  return (disposeSource >> disposeStopper)
-        stopProcessor state (Next _) = do open <- readTVar state
-                                          if (not open) 
-                                             then return Skip 
-                                             else writeTVar state False >> return Unsubscribe
-        stopProcessor state _ = return Skip
+        stopOnNext state (Next _) = do open <- readTVar state
+                                       if (not open) 
+                                          then return Skip 
+                                          else writeTVar state False >> return Unsubscribe
+        stopOnNext state _ = return Skip
                                           
  
 data Result a = Pass (Event a) | Skip | Unsubscribe
