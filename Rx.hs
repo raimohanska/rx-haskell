@@ -114,10 +114,18 @@ skipWhile condition source = toObservable skipWhile'
                                        then when (not done) (writeIORef doneRef True) >> next a
                                        else return()
 
-stateFul :: (TVar Bool -> Event a -> STM Bool) -> Observable a -> Observable a
-stateFul processor source = toObservable stateful'
-  where stateful' = undefined
--- TODO: implement statetul, then skipWhile using stateful, finally refactor takeWhile
+data Result a = Pass (Event a) | Skip | Unsubscribe
+
+stateFul :: (TVar s -> Event a -> STM (Result a)) -> s -> Observable a -> Observable a
+stateFul processor initState source = toObservable subscribe'
+  where subscribe' observer = do state <- newTVarIO initState
+                                 subscribe source $ Observer $ statefully observer state
+        statefully observer state event = do result <- atomically (processor state event)
+                                             case result of
+                                                Pass e -> consume observer e
+                                                Skip -> return()
+                                                Unsubscribe -> return()
+-- TODO: implement the Unsubscribe case above 
 
 data Valve a = Valve (TVar Bool) (Observable a) 
 
