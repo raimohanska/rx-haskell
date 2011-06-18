@@ -112,7 +112,7 @@ skipWhile condition source = stateful skipWhile' False source
         skipWhile' state event = return $ Pass event
 takeUntil :: Observable a -> Observable b -> Observable a
 takeUntil source stopper = toObservable subscribe'
-  where subscribe' observer = do state <- newTVarIO True
+  where subscribe' observer = do state <- newTVarIO True -- TODO: should unsub source on stop event
                                  disposeSource <- subscribe (valved state source) observer
                                  disposeStopper <- subscribeStatefully stopProcessor state stopper observer
                                  return (disposeSource >> disposeStopper)
