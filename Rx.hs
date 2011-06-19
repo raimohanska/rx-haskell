@@ -83,7 +83,7 @@ onNext observer action = Observer onNext'
  
 merge :: Observable a -> Observable a -> Observable a
 merge left right = toObservable merge'
-  where merge' observer = do endLeft <- newIORef (False)
+  where merge' observer = do endLeft <- newIORef (False) -- TODO: use STM
                              endRight <- newIORef (False)
                              disposeLeft <- subscribe left $ onEnd observer $ barrier endLeft endRight observer
                              disposeRight <- subscribe right $ onEnd observer $ barrier endRight endLeft observer
@@ -123,6 +123,16 @@ takeUntil source stopper = toObservable subscribe'
                                           then return Skip 
                                           else writeTVar state False >> return Unsubscribe
         stopOnNext state _ = return Skip
+
+take :: Int -> Observable a -> Observable a
+take n source = stateful take' 0 source
+  where take' state event@(Next a) = do taken <- readTVar state
+                                        if (taken >= n) 
+                                          then return Unsubscribe 
+                                          else writeTVar state (n+1) >> (return $ Pass event)
+        take' state event = do taken <- readTVar state
+                               if (taken >= n) then return Skip else return $ Pass event
+                                           
  
 data Result a = Pass (Event a) | Skip | Unsubscribe
 
@@ -139,3 +149,4 @@ subscribeStatefully processor state source observer = subscribe source $ Observe
                                                 Skip -> return()
                                                 Unsubscribe -> consume observer End 
                                                 -- TODO: implement the Unsubscribe case above 
+
