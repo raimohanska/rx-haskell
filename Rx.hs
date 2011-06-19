@@ -132,8 +132,21 @@ take n source = stateful take' 0 source
                                           else writeTVar state (n+1) >> (return $ Pass event)
         take' state event = do taken <- readTVar state
                                if (taken >= n) then return Skip else return $ Pass event
-                                           
- 
+
+take2 :: Int -> Observable a -> Observable a
+take2 n source = select fst $ Rx.takeWhile ((<=n) . snd) $ Rx.zip source $ observableList [1..]
+-- TODO: take2 might work if zip was implemented and endless lists supported.. 
+
+zip :: Observable a -> Observable b -> Observable (a, b)
+zip left right = toObservable subscribe'
+  where subscribe' observer = do state <- newTVarIO (([], []), False)
+                                 disposeLeft <- subscribeStatefully handleLeft state left observer
+                                 disposeRight <- subscribeStatefully handleRight state right observer
+                                 return (disposeLeft >> disposeRight)
+        handleLeft = undefined
+        handleRight = undefined
+        {- TODO: how to handle .. -}
+
 data Result a = Pass (Event a) | Skip | Unsubscribe
 
 stateful :: (TVar s -> Event a -> STM (Result a)) -> s -> Observable a -> Observable a
