@@ -138,32 +138,4 @@ subscribeStatefully processor state source observer = subscribe source $ Observe
                                                 Pass e -> consume observer e
                                                 Skip -> return()
                                                 Unsubscribe -> consume observer End 
--- TODO: implement the Unsubscribe case above 
-
-data Valve a = Valve (TVar Bool) (Observable a) 
-
-valve :: Observable a -> Bool -> STM (Valve a)
-valve observable open = newTVar open >>= return . (flip Valve) observable
-
-openValve :: Valve a -> STM ()
-openValve = setValveState True 
-
-closeValve :: Valve a -> STM()
-closeValve = setValveState False
-
-setValveState :: Bool -> Valve a -> STM ()
-setValveState newState (Valve state _) = writeTVar state newState
-
-instance Source Valve where
-  getObservable (Valve state (Observable subscribe)) = toObservable subscribe'
-    where subscribe' = subscribe . valvedObserver state
-
-valved :: TVar Bool -> Observable a -> Observable a
-valved state observable = getObservable $ Valve state observable
-
-valvedObserver :: TVar Bool -> Observer a -> Observer a
-valvedObserver state (Observer consume) = Observer (valved consume)
-  where valved action input = atomically (readTVar state) >>= \open -> when open (action input)
-
-{- TODO: *Until types should be Observable a -> Observable a -> Observable a -}
-{- TODO: Use Control.Concurrent.STM -}
+                                                -- TODO: implement the Unsubscribe case above 
