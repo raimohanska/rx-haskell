@@ -112,16 +112,17 @@ skipWhile condition source = stateful skipWhile' False source
         skipWhile' state event = return $ Pass event
 takeUntil :: Observable a -> Observable b -> Observable a
 takeUntil source stopper = toObservable subscribe'
-  where subscribe' observer = do state <- newTVarIO True -- TODO: should unsub source on stop event
-                                 disposeSource <- subscribe (valved state source) observer
+  where subscribe' observer = do state <- newTVarIO True
+                                 disposeSource <- subscribeStatefully whileOpen state source observer
                                  disposeStopper <- subscribeStatefully stopOnNext state stopper observer
                                  return (disposeSource >> disposeStopper)
+        whileOpen  state event = do open <- readTVar state
+                                    if (not open) then return Unsubscribe else return $ Pass event
         stopOnNext state (Next _) = do open <- readTVar state
                                        if (not open) 
                                           then return Skip 
                                           else writeTVar state False >> return Unsubscribe
         stopOnNext state _ = return Skip
-                                          
  
 data Result a = Pass (Event a) | Skip | Unsubscribe
 
