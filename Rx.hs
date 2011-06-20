@@ -140,11 +140,15 @@ take2 n source = select fst $ Rx.takeWhile ((<=n) . snd) $ Rx.zip source $ obser
 
 
 zip :: Observable a -> Observable b -> Observable (a, b)
-zip left right = toObservable subscribe'
-  where subscribe' observer = do state <- newTVarIO $ ([], [])
+zip = Rx.zipWith (,)
+
+zipWith :: (a -> b -> c) -> Observable a -> Observable b -> Observable c
+zipWith zipper left right = Observable $ \observer ->
+                              do state <- newTVarIO $ ([], [])
                                  disposeLeft <- subscribeStatefully (handle addLeft) state left observer
                                  disposeRight <- subscribeStatefully (handle addRight) state right observer
                                  return (disposeLeft >> disposeRight)
+        where
         handle push statusVar event = do status <- (readTVar statusVar) >>= (return . push event)
                                          let (result, statusAfterPull) = pull status 
                                          writeTVar statusVar statusAfterPull
@@ -154,10 +158,10 @@ zip left right = toObservable subscribe'
         pull (End : as, End : bs) = (UnsubscribeAndSkip, (End : as, End : bs))
         pull (End : as, _) = (UnsubscribeAndEnd, ([End], [End]))
         pull (_ , End :bs) = (UnsubscribeAndEnd, ([End], [End]))
-        pull (((Next a):as), ((Next b):bs)) = (Pass(Next(a, b)), (as, bs))
+        pull (((Next a):as), ((Next b):bs)) = (Pass(Next(zipper a b)), (as, bs))
         pull status = (Skip, status)
         -- TODO: handle errorz
-
+        
 data Result a = Pass (Event a) | Skip | UnsubscribeAndEnd | UnsubscribeAndSkip
 
 stateful :: (TVar s -> Event a -> STM (Result a)) -> s -> Observable a -> Observable a
