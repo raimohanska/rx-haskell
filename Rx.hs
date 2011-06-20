@@ -150,10 +150,13 @@ zip left right = toObservable subscribe'
                                                   let (result, statusAfterPull) = pull status 
                                                   writeTVar statusVar statusAfterPull
                                                   return result 
+        handle push statusVar event = return Skip
         addLeft a status = status { leftQ = a:(leftQ status) }
         addRight b status = status { rightQ = b:(rightQ status) } 
         pull (ZipStatus (a:as) (b:bs)) = (Pass(Next(a, b)), (ZipStatus as bs))
         pull status = (Skip, status)
+        -- TODO: output order is reversed
+        -- TODO: handle stream ends
 
 data Result a = Pass (Event a) | Skip | Unsubscribe
 
