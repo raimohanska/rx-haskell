@@ -162,6 +162,7 @@ zipWith zipper left right = Observable $ \observer ->
         pull (((Next a):as), ((Next b):bs)) = (Pass(Next(zipper a b)), (as, bs))
         pull status = (Skip, status)
         -- TODO: handle errorz
+        -- TODO: why doesn't output "end"?
 
 scan :: (a -> b -> b) -> b -> Observable a -> Observable b
 scan func init source = stateful scan' init source
