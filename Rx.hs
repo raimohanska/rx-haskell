@@ -170,12 +170,19 @@ stateful processor initState source = toObservable subscribe'
                                  subscribeStatefully processor state source observer
 
 subscribeStatefully :: (TVar s -> Event a -> STM (Result b)) -> TVar s -> Observable a -> Observer b -> IO Disposable
-subscribeStatefully processor state source observer = subscribe source $ Observer $ statefully observer state
-  where statefully observer state event = do result <- atomically (processor state event)
+subscribeStatefully processor state source observer = do
+      disposeRef <- newIORef Nothing
+      dispose <- subscribe source $ Observer $ statefully disposeRef observer state
+      writeIORef disposeRef (Just dispose)
+      return dispose
+  where statefully disposeRef observer state event = 
+                                          do result <- atomically (processor state event)
                                              case result of
                                                 Pass e -> consume observer e
                                                 Skip -> return()
-                                                UnsubscribeAndEnd -> consume observer End
-                                                UnsubscribeAndSkip -> return ()
-                                                -- TODO: implement the Unsubscribe case above 
+                                                UnsubscribeAndEnd -> unsubscribe disposeRef >> consume observer End
+                                                UnsubscribeAndSkip -> unsubscribe disposeRef
+        unsubscribe disposeRef = readIORef disposeRef >>= \state -> case state of
+                                                                        Nothing -> return()
+                                                                        Just d  -> d
 

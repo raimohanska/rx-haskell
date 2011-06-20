@@ -40,7 +40,7 @@ testZip = do
   let as = observableList ["a", "b", "c"]
   let nums = observableList [1, 2, 3]
   let zipped = Rx.zip as nums
-  subscribe (select show zipped) (toObserver putStrLn)
+  subscribe (select show zipped) putStrLnObserver
   
 alphabets = observableList ["a", "b", "c"]
 numbers = observableList ["1", "2", "3"]
