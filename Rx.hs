@@ -41,6 +41,7 @@ toObserver next = Observer defaultHandler
         defaultHandler (Error e) = fail e
 
 -- TODO: should stop on unsubscribe (think generators like [1..])
+-- needs to spawn a new thread or something like that
 observableList :: [a] -> Observable a
 observableList list = toObservable subscribe 
   where subscribe observer = do mapM (consume observer) (map Next list)
