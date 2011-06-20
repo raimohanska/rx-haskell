@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 module Rx where
 
 import Control.Monad
@@ -127,18 +128,14 @@ takeUntil source stopper = toObservable subscribe'
         stopOnNext state _ = return Skip
 
 take :: Int -> Observable a -> Observable a
-take n source = stateful take' 0 source
-  where take' state event@(Next a) = do taken <- readTVar state
-                                        if (taken >= n) 
-                                          then return UnsubscribeAndEnd
-                                          else writeTVar state (n+1) >> (return $ Pass event)
-        take' state event = do taken <- readTVar state
-                               if (taken >= n) then return Skip else return $ Pass event
+take n source = select fst $ Rx.takeWhile ((<=n). snd) $ numbered source
 
-take2 :: Int -> Observable a -> Observable a
-take2 n source = select fst $ Rx.takeWhile ((<=n) . snd) $ Rx.zip source $ observableList [1..]
--- TODO: take2 might work if zip was implemented and endless lists supported.. 
+skip :: Int -> Observable a -> Observable a
+skip n source = select fst $ Rx.skipWhile ((<=n). snd) $ numbered source
 
+numbered :: Observable a -> Observable (a, Int)
+numbered source = stateful numbered' 0 source
+  where numbered' state (Next a) = modifyTVar (+1) state >>= return . Pass . Next . (a,)
 
 zip :: Observable a -> Observable b -> Observable (a, b)
 zip = Rx.zipWith (,)

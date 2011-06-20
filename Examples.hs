@@ -44,5 +44,13 @@ testScan = do
   putStrLn "Should print 1, 3, 6"
   subscribe (select show (Rx.scan (+) 0 numbers)) putStrLnObserver
 
+testTakeWhile = do
+  putStrLn "Should print 1"
+  subscribe (select show (Rx.takeWhile odd numbers)) putStrLnObserver
+
+testSkipWhile = do
+  putStrLn "Should print 2, 3"
+  subscribe (select show (Rx.skipWhile odd numbers)) putStrLnObserver
+
 alphabets = observableList ["a", "b", "c"]
 numbers = observableList [1, 2, 3]
