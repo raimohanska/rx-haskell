@@ -33,14 +33,16 @@ testConcat = do
 
 testMerge = do
   putStrLn "Should print a, b, c, 1, 2, 3"
-  subscribe (merge alphabets numbers) putStrLnObserver 
+  subscribe (merge alphabets (select show numbers)) putStrLnObserver 
 
 testZip = do
   putStrLn "Should print (a, 1) (b, 2) (c, 3)"
-  let as = observableList ["a", "b", "c"]
-  let nums = observableList [1, 2, 3]
-  let zipped = Rx.zip as nums
+  let zipped = Rx.zip alphabets numbers
   subscribe (select show zipped) putStrLnObserver
-  
+
+testScan = do
+  putStrLn "Should print 1, 3, 6"
+  subscribe (select show (Rx.scan (+) 0 numbers)) putStrLnObserver
+
 alphabets = observableList ["a", "b", "c"]
-numbers = observableList ["1", "2", "3"]
+numbers = observableList [1, 2, 3]

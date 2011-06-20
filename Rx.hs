@@ -162,10 +162,22 @@ zipWith zipper left right = Observable $ \observer ->
         pull (((Next a):as), ((Next b):bs)) = (Pass(Next(zipper a b)), (as, bs))
         pull status = (Skip, status)
         -- TODO: handle errorz
+
+scan :: (a -> b -> b) -> b -> Observable a -> Observable b
+scan func init source = stateful scan' init source
+  where scan' state (Next a)  = modifyTVar (func a) state >>= (return . Pass . Next)
+        scan' state End       = return $ Pass $ End
+        scan' state (Error e) = return $ Pass $ Error e
         
+modifyTVar :: (a -> a) -> TVar a -> STM a
+modifyTVar func tvar = do val <- readTVar tvar
+                          let newVal = func val
+                          writeTVar tvar newVal
+                          return newVal
+
 data Result a = Pass (Event a) | Skip | UnsubscribeAndEnd | UnsubscribeAndSkip
 
-stateful :: (TVar s -> Event a -> STM (Result a)) -> s -> Observable a -> Observable a
+stateful :: (TVar s -> Event a -> STM (Result b)) -> s -> Observable a -> Observable b 
 stateful processor initState source = toObservable subscribe'
   where subscribe' observer = do state <- newTVarIO initState
                                  subscribeStatefully processor state source observer
