@@ -100,7 +100,7 @@ takeWhile condition source = stateful takeWhile' False source
                                                 then return Skip
                                                 else if condition a
                                                     then return (Pass event)
-                                                    else writeTVar state True >> return Unsubscribe
+                                                    else writeTVar state True >> return UnsubscribeAndEnd
         takeWhile' state event = do done <- readTVar state
                                     if (done) then (return Skip) else (return $ Pass event)
 
@@ -118,18 +118,18 @@ takeUntil source stopper = toObservable subscribe'
                                  disposeStopper <- subscribeStatefully stopOnNext state stopper observer
                                  return (disposeSource >> disposeStopper)
         whileOpen  state event = do open <- readTVar state
-                                    if (not open) then return Unsubscribe else return $ Pass event
+                                    if (not open) then return UnsubscribeAndSkip else return $ Pass event
         stopOnNext state (Next _) = do open <- readTVar state
                                        if (not open) 
                                           then return Skip 
-                                          else writeTVar state False >> return Unsubscribe
+                                          else writeTVar state False >> return UnsubscribeAndEnd
         stopOnNext state _ = return Skip
 
 take :: Int -> Observable a -> Observable a
 take n source = stateful take' 0 source
   where take' state event@(Next a) = do taken <- readTVar state
                                         if (taken >= n) 
-                                          then return Unsubscribe 
+                                          then return UnsubscribeAndEnd
                                           else writeTVar state (n+1) >> (return $ Pass event)
         take' state event = do taken <- readTVar state
                                if (taken >= n) then return Skip else return $ Pass event
@@ -139,26 +139,26 @@ take2 n source = select fst $ Rx.takeWhile ((<=n) . snd) $ Rx.zip source $ obser
 -- TODO: take2 might work if zip was implemented and endless lists supported.. 
 
 
-data ZipStatus a b = ZipStatus { leftQ :: [a], rightQ :: [b] }
 zip :: Observable a -> Observable b -> Observable (a, b)
 zip left right = toObservable subscribe'
-  where subscribe' observer = do state <- newTVarIO $ ZipStatus [] []
+  where subscribe' observer = do state <- newTVarIO $ ([], [])
                                  disposeLeft <- subscribeStatefully (handle addLeft) state left observer
                                  disposeRight <- subscribeStatefully (handle addRight) state right observer
                                  return (disposeLeft >> disposeRight)
-        handle push statusVar event@(Next x) = do status <- (readTVar statusVar) >>= (return . push x)
-                                                  let (result, statusAfterPull) = pull status 
-                                                  writeTVar statusVar statusAfterPull
-                                                  return result 
-        handle push statusVar event = return Skip
-        addLeft a status = status { leftQ = a:(leftQ status) }
-        addRight b status = status { rightQ = b:(rightQ status) } 
-        pull (ZipStatus (a:as) (b:bs)) = (Pass(Next(a, b)), (ZipStatus as bs))
+        handle push statusVar event = do status <- (readTVar statusVar) >>= (return . push event)
+                                         let (result, statusAfterPull) = pull status 
+                                         writeTVar statusVar statusAfterPull
+                                         return result 
+        addLeft a (as, bs) = (as ++ [a], bs)
+        addRight b (as, bs) = (as, bs ++ [b])
+        pull (End : as, End : bs) = (UnsubscribeAndSkip, (End : as, End : bs))
+        pull (End : as, _) = (UnsubscribeAndEnd, ([End], [End]))
+        pull (_ , End :bs) = (UnsubscribeAndEnd, ([End], [End]))
+        pull (((Next a):as), ((Next b):bs)) = (Pass(Next(a, b)), (as, bs))
         pull status = (Skip, status)
-        -- TODO: output order is reversed
-        -- TODO: handle stream ends
+        -- TODO: handle errorz
 
-data Result a = Pass (Event a) | Skip | Unsubscribe
+data Result a = Pass (Event a) | Skip | UnsubscribeAndEnd | UnsubscribeAndSkip
 
 stateful :: (TVar s -> Event a -> STM (Result a)) -> s -> Observable a -> Observable a
 stateful processor initState source = toObservable subscribe'
@@ -171,6 +171,7 @@ subscribeStatefully processor state source observer = subscribe source $ Observe
                                              case result of
                                                 Pass e -> consume observer e
                                                 Skip -> return()
-                                                Unsubscribe -> consume observer End 
+                                                UnsubscribeAndEnd -> consume observer End
+                                                UnsubscribeAndSkip -> return ()
                                                 -- TODO: implement the Unsubscribe case above 
 
